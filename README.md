@@ -53,6 +53,7 @@ const imageBuffer = readFileSync('./hero-banner.png');
 
 const result = await client.optimize(imageBuffer, {
   format: 'avif',
+  mode: 'lossy', // 'lossy' (default) | 'extreme' | 'lossless'; checked against your plan
   quality: 80,
   maxWidth: 1920,
 });
@@ -61,6 +62,10 @@ console.log(`Optimized CDN URL: ${result.url}`);
 console.log(`Original: ${result.originalSize} bytes ➔ Compressed: ${result.compressedSize} bytes`);
 console.log(`Saved: ${result.savingsPercentage}% (${result.bytesSaved} bytes)`);
 ```
+
+### Compression mode
+
+`mode` is `lossy` (default), `extreme` or `lossless`. The server checks it against your plan: a mode the plan does not include throws `PermissionDeniedError` whose `details.allowed_modes` lists the modes you can use. The job status reports what the encoder really used as `modeApplied` and `qualityApplied`. The old `lossless: true` option still works but is deprecated; use `mode: 'lossless'`.
 
 ---
 

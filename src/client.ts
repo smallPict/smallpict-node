@@ -2,6 +2,7 @@ import { HttpClient } from './http.js';
 import { QuotaExceededError, ValidationError } from './errors.js';
 import type {
   ClientOptions,
+  CompressionMode,
   FallbackMode,
   ImageSource,
   JobStatusResult,
@@ -11,6 +12,20 @@ import type {
   PurgeResponse,
   QuotaResponse,
 } from './types.js';
+
+/**
+ * Resolves the wire `mode` from `mode` and the deprecated `lossless` flag.
+ */
+export function resolveMode(options?: OptimizeOptions): CompressionMode | undefined {
+  const lossless = options?.lossless === true;
+  if (options?.mode) {
+    if (lossless && options.mode !== 'lossless') {
+      throw new ValidationError(`lossless: true contradicts mode: '${options.mode}'. Use mode only.`);
+    }
+    return options.mode;
+  }
+  return lossless ? 'lossless' : undefined;
+}
 
 /**
  * Helper to inspect binary size and mime type from ImageSource.
@@ -114,6 +129,7 @@ export class SmallPictClient {
    * ```
    */
   public async optimize(source: ImageSource, options?: OptimizeOptions): Promise<OptimizeResult> {
+    const mode = resolveMode(options);
     const resolved = await resolveImageSource(source, options);
 
     const payload = {
@@ -128,7 +144,7 @@ export class SmallPictClient {
         max_height: options?.maxHeight,
         max_dimension: options?.maxDimension,
         fit: options?.fit || 'cover',
-        lossless: options?.lossless ?? false,
+        mode,
         strip_metadata: options?.stripMetadata ?? true,
       },
     };
@@ -292,6 +308,8 @@ export class SmallPictClient {
       url: d.url,
       format: d.format,
       bytesSaved: d.bytes_saved,
+      modeApplied: d.mode_applied,
+      qualityApplied: d.quality_applied,
       error: d.error,
       createdAt: d.created_at,
       updatedAt: d.updated_at,

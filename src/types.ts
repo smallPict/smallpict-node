@@ -9,6 +9,17 @@ export type ImageFormat = 'auto' | 'avif' | 'webp' | 'jpeg' | 'png';
 export type FitMode = 'cover' | 'contain' | 'inside' | 'outside';
 
 /**
+ * Compression mode. The server checks it against the plan: a mode outside the plan is
+ * `403 mode_not_in_plan` (`PermissionDeniedError`, `details.allowed_modes`).
+ */
+export type CompressionMode = 'lossy' | 'extreme' | 'lossless';
+
+/**
+ * Every compression mode the API accepts.
+ */
+export const COMPRESSION_MODES: readonly CompressionMode[] = ['lossy', 'extreme', 'lossless'];
+
+/**
  * Fallback behavior when monthly quota limit is reached.
  * - 'throw': Throws QuotaExceededError (default).
  * - 'passthrough': Returns original unoptimized image with a warning log.
@@ -79,7 +90,13 @@ export interface OptimizeOptions {
   format?: ImageFormat;
 
   /**
-   * Compression quality (1 - 100, defaults to 80).
+   * Compression mode (server default: 'lossy').
+   */
+  mode?: CompressionMode;
+
+  /**
+   * Compression quality (1 - 100, defaults to 80). The server applies the floor of the
+   * mode and reports the value used as `qualityApplied` in the job status.
    */
   quality?: number;
 
@@ -104,7 +121,8 @@ export interface OptimizeOptions {
   fit?: FitMode;
 
   /**
-   * Enable lossless compression mode (default: false).
+   * @deprecated Use `mode: 'lossless'`. `true` is sent as `mode: 'lossless'`; combined with a
+   * different `mode` it throws a `ValidationError`.
    */
   lossless?: boolean;
 
@@ -198,6 +216,14 @@ export interface JobStatusResult {
   url?: string;
   format?: string;
   bytesSaved?: number;
+  /**
+   * Mode the server's encoder used; absent for older jobs or when no encoder ran.
+   */
+  modeApplied?: string;
+  /**
+   * Quality the server's encoder used, on the codec's own scale.
+   */
+  qualityApplied?: number;
   error?: {
     message: string;
   };
@@ -252,6 +278,8 @@ export type ErrorCode =
   | 'QUOTA_EXCEEDED'
   | 'OVERAGE_EXCEEDED'
   | 'RATE_LIMIT_EXCEEDED'
+  | 'invalid_mode'
+  | 'mode_not_in_plan'
   | 'INTERNAL_ERROR'
   | 'NETWORK_ERROR'
   | 'TIMEOUT_ERROR';

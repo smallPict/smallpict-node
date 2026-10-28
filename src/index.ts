@@ -22,6 +22,8 @@ export {
   EMPTY_SHA256,
 } from './crypto.js';
 
+export { COMPRESSION_MODES } from './types.js';
+
 export type {
   ClientOptions,
   OptimizeOptions,
@@ -32,6 +34,7 @@ export type {
   PurgeResponse,
   ImageFormat,
   FitMode,
+  CompressionMode,
   FallbackMode,
   ImageSource,
   ErrorCode,
