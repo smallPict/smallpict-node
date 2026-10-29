@@ -45,6 +45,20 @@ describe('compression mode', () => {
     });
   }
 
+  it('omits quality when unset so the server picks the default per mode', async () => {
+    const fetch = jsonFetch(200, { job_id: 'j', status: 'queued' });
+    await client(fetch).optimize(Buffer.from('img'), { mode: 'extreme' });
+    const sent = JSON.parse((fetch.mock.calls[0]![1] as RequestInit).body as string);
+    expect('quality' in sent.options).toBe(false);
+  });
+
+  it('sends quality when set', async () => {
+    const fetch = jsonFetch(200, { job_id: 'j', status: 'queued' });
+    await client(fetch).optimize(Buffer.from('img'), { mode: 'extreme', quality: 70 });
+    const sent = JSON.parse((fetch.mock.calls[0]![1] as RequestInit).body as string);
+    expect(sent.options.quality).toBe(70);
+  });
+
   it('reads mode_applied and quality_applied from the job status', async () => {
     const fetch = jsonFetch(200, { job_id: 'j', status: 'completed', mode_applied: 'lossy', quality_applied: 65 });
     const status = await client(fetch).getJobStatus('j');

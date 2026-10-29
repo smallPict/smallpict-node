@@ -152,7 +152,7 @@ export class SmallPictClient {
       filesize: resolved.filesize,
       options: {
         format: options?.format || 'auto',
-        quality: options?.quality ?? 80,
+        quality: options?.quality, // undefined is dropped by JSON.stringify: the server picks the default per mode
         max_width: options?.maxWidth,
         max_height: options?.maxHeight,
         max_dimension: options?.maxDimension,

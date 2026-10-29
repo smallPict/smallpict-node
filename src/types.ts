@@ -95,8 +95,9 @@ export interface OptimizeOptions {
   mode?: CompressionMode;
 
   /**
-   * Compression quality (1 - 100, defaults to 80). The server applies the floor of the
-   * mode and reports the value used as `qualityApplied` in the job status.
+   * Compression quality (1 - 100). Leave it out and the server picks the default for the mode
+   * and output format; a value you set is kept or raised to the mode's floor. The value used is
+   * reported as `qualityApplied` in the job status.
    */
   quality?: number;
 

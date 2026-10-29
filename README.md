@@ -67,6 +67,15 @@ console.log(`Saved: ${result.savingsPercentage}% (${result.bytesSaved} bytes)`);
 
 `mode` is `lossy` (default), `extreme` or `lossless`. The server checks it against your plan: a mode the plan does not include throws `PermissionDeniedError` whose `details.allowed_modes` lists the modes you can use. The job status reports what the encoder really used as `modeApplied` and `qualityApplied`. The old `lossless: true` option still works but is deprecated; use `mode: 'lossless'`.
 
+`extreme` gives the smallest files on every plan. Leave `quality` out so the server uses its default for the output format; a `quality` you set is kept or raised to the format floor. Mode comparison: https://smallpict.app/en/docs/image-settings
+
+```ts
+const smallest = await client.optimize(imageBuffer, {
+  format: 'webp',
+  mode: 'extreme', // no quality: the server picks the default for WebP
+});
+```
+
 ### Upload folder
 
 `folder` (e.g. `'blog/2026'`) stores the optimized file in that folder under your account. It has 1-3 segments separated by `/`; the server lower-cases it and returns it as `folder` in the result and the job status. The SDK rejects empty segments, `..` and more than 3 segments with `ValidationError` before any request; any other malformed value comes back from the server as `ValidationError` (`invalid_folder`).

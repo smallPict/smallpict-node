@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ErrorCode` includes `invalid_folder` and `purge_rate_limited`.
 
 ### Changed
+- `optimize()` sends `quality` only when you set it. Before, it always sent `80`, so `mode: 'extreme'` produced lossy-Q80-sized files; now the server default per mode applies (lossy 80, extreme a per-codec default). Results for `lossy` are unchanged.
+- README: compression mode section has an `extreme` example without `quality`.
 - **`429 purge_rate_limited` is not retried.** `folder` and `all` purges are limited per hour, so the SDK throws `RateLimitError` on the first response instead of retrying within seconds. Other 429 responses are retried as before.
 
 ### Deprecated
