@@ -132,6 +132,12 @@ export interface OptimizeOptions {
   stripMetadata?: boolean;
 
   /**
+   * Upload folder for the optimized file (e.g. 'blog/2026'): 1-3 segments, normalized to lower
+   * case by the server, which answers `400 invalid_folder` (`ValidationError`) when malformed.
+   */
+  folder?: string;
+
+  /**
    * Suggested filename for pre-signed storage mapping.
    */
   filename?: string;
@@ -205,6 +211,11 @@ export interface OptimizeResult {
    * Binary data if requested in buffer mode.
    */
   data?: Uint8Array;
+
+  /**
+   * Folder stored with the job, as normalized by the server; absent without one.
+   */
+  folder?: string;
 }
 
 /**
@@ -224,6 +235,10 @@ export interface JobStatusResult {
    * Quality the server's encoder used, on the codec's own scale.
    */
   qualityApplied?: number;
+  /**
+   * Folder stored with the job, as normalized by the server; absent without one.
+   */
+  folder?: string;
   error?: {
     message: string;
   };
@@ -255,9 +270,16 @@ export interface PurgeOptions {
   urls?: string[];
 
   /**
-   * Purge scope ('url' for specific assets, 'all' for complete edge zone purge).
+   * Purge scope ('url' for specific assets, 'folder' for one upload folder, 'all' for every
+   * asset of the account). 'folder' and 'all' are limited per hour: `429 purge_rate_limited`
+   * (`RateLimitError`, not retried automatically).
    */
-  purgeType?: 'url' | 'all';
+  purgeType?: 'url' | 'folder' | 'all';
+
+  /**
+   * Upload folder to purge; required for, and sent only with, `purgeType: 'folder'`.
+   */
+  folder?: string;
 }
 
 /**
@@ -280,6 +302,8 @@ export type ErrorCode =
   | 'RATE_LIMIT_EXCEEDED'
   | 'invalid_mode'
   | 'mode_not_in_plan'
+  | 'invalid_folder'
+  | 'purge_rate_limited'
   | 'INTERNAL_ERROR'
   | 'NETWORK_ERROR'
   | 'TIMEOUT_ERROR';

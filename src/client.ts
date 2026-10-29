@@ -28,6 +28,18 @@ export function resolveMode(options?: OptimizeOptions): CompressionMode | undefi
 }
 
 /**
+ * Light client-side check of an upload folder; the server applies the full rule (`invalid_folder`).
+ */
+export function validateFolder(folder: string): void {
+  const segments = folder.split('/');
+  if (segments.length > 3 || segments.some((s) => s === '' || s === '..')) {
+    throw new ValidationError(
+      `Invalid folder '${folder}': use 1-3 segments separated by '/', without empty or '..' segments.`
+    );
+  }
+}
+
+/**
  * Helper to inspect binary size and mime type from ImageSource.
  */
 async function resolveImageSource(
@@ -130,6 +142,7 @@ export class SmallPictClient {
    */
   public async optimize(source: ImageSource, options?: OptimizeOptions): Promise<OptimizeResult> {
     const mode = resolveMode(options);
+    if (options?.folder !== undefined) validateFolder(options.folder);
     const resolved = await resolveImageSource(source, options);
 
     const payload = {
@@ -145,6 +158,7 @@ export class SmallPictClient {
         max_dimension: options?.maxDimension,
         fit: options?.fit || 'cover',
         mode,
+        folder: options?.folder,
         strip_metadata: options?.stripMetadata ?? true,
       },
     };
@@ -174,6 +188,7 @@ export class SmallPictClient {
         bytesSaved,
         savingsPercentage: Number(savingsPercentage.toFixed(2)),
         uploadUrl: res.upload_url,
+        folder: res.folder,
       };
     } catch (err: unknown) {
       if (err instanceof QuotaExceededError && this.fallbackMode === 'passthrough') {
@@ -238,6 +253,7 @@ export class SmallPictClient {
    * @example
    * ```ts
    * await client.purgeCdn({ urls: ['https://cdn.smallpict.app/opt/hero.avif'] });
+ * await client.purgeCdn({ purgeType: 'folder', folder: 'blog/2026' });
    * ```
    */
   public async purgeCdn(options?: PurgeOptions | string[]): Promise<PurgeResponse> {
@@ -250,6 +266,13 @@ export class SmallPictClient {
         purgeType: options.purgeType || 'url',
         urls: options.urls || [],
       };
+      if (payload.purgeType === 'folder') {
+        if (options.folder === undefined || options.folder === '') {
+          throw new ValidationError("folder is required for purgeType 'folder'");
+        }
+        validateFolder(options.folder);
+        payload.folder = options.folder;
+      }
     }
 
     const response = await this.http.request<PurgeResponse>({
@@ -257,6 +280,7 @@ export class SmallPictClient {
       path: '/v1/purge',
       body: {
         purge_type: payload.purgeType,
+        folder: payload.folder,
         urls: payload.urls,
       },
     });
@@ -310,6 +334,7 @@ export class SmallPictClient {
       bytesSaved: d.bytes_saved,
       modeApplied: d.mode_applied,
       qualityApplied: d.quality_applied,
+      folder: d.folder,
       error: d.error,
       createdAt: d.created_at,
       updatedAt: d.updated_at,

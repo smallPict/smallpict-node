@@ -138,6 +138,13 @@ export class HttpClient {
         // Check if retryable
         if (response.status === 429 || (response.status >= 500 && response.status <= 504)) {
           if (attempt <= this.maxRetries) {
+            // purge_rate_limited is an hourly limit: a retry seconds later cannot succeed.
+            if (response.status === 429 && (response.headers.get('content-type') || '').includes('application/json')) {
+              const data = (await response.json().catch(() => null)) as { error?: { code?: string } } | null;
+              if (data?.error?.code === 'purge_rate_limited') {
+                throw createErrorFromResponse(response.status, data, requestId, retryAfterHeader);
+              }
+            }
             let delayMs = baseDelayMs * Math.pow(2, attempt - 1);
             if (retryAfterHeader) {
               const parsedSeconds = parseInt(retryAfterHeader, 10);

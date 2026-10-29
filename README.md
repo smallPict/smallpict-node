@@ -67,6 +67,10 @@ console.log(`Saved: ${result.savingsPercentage}% (${result.bytesSaved} bytes)`);
 
 `mode` is `lossy` (default), `extreme` or `lossless`. The server checks it against your plan: a mode the plan does not include throws `PermissionDeniedError` whose `details.allowed_modes` lists the modes you can use. The job status reports what the encoder really used as `modeApplied` and `qualityApplied`. The old `lossless: true` option still works but is deprecated; use `mode: 'lossless'`.
 
+### Upload folder
+
+`folder` (e.g. `'blog/2026'`) stores the optimized file in that folder under your account. It has 1-3 segments separated by `/`; the server lower-cases it and returns it as `folder` in the result and the job status. The SDK rejects empty segments, `..` and more than 3 segments with `ValidationError` before any request; any other malformed value comes back from the server as `ValidationError` (`invalid_folder`).
+
 ---
 
 ## 🏭 Production Examples
@@ -135,7 +139,12 @@ await client.purgeCdn([
   'https://cdn.smallpict.app/opt/logo.webp',
 ]);
 console.log('CDN cache purged successfully!');
+
+// 3. Purge every file delivered under one upload folder
+await client.purgeCdn({ purgeType: 'folder', folder: 'blog/2026' });
 ```
+
+`folder` and `all` purges are limited per hour (10 and 2). One more throws `RateLimitError`, which the SDK does not retry automatically: the limit resets within the hour, not in seconds.
 
 ---
 
