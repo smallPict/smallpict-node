@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.7] - 2026-10-31
+
 ### Added
 - `'auto'` compression mode (`CompressionMode`, `COMPRESSION_MODES`): the server picks the quality per image from a visual score. Plans: WP Pro and Business, Velocity, Momentum and sandbox; a server without auto enabled answers `400 invalid_mode` (`ValidationError`).
 - `mode` option on `optimize()`: `'lossy'` (default), `'extreme'` or `'lossless'`, typed as `CompressionMode`; `COMPRESSION_MODES` lists them. The server checks the mode against the plan and answers `403 mode_not_in_plan` (`PermissionDeniedError`, `details.allowed_modes`).
