@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Every `SmallPictError` has `upgradeUrl` (from `details.upgrade_url`, otherwise `null`): the dashboard page where the missing capacity is added. The SDK does not open it.
 - `PermissionDeniedError.allowedModes` for `mode_not_in_plan` (from `details.allowed_modes`, otherwise `null`).
 - `ErrorCode` includes `storage_quota_exceeded`, `account_read_only` (both `QuotaExceededError`) and the 409 capacity codes, which raise the base `SmallPictError` with `status` 409.
+- `purgeCdn()` returns `deliveryModes` (`['managed']` or `['byo']`) when the server reports where the purge was sent; absent on older servers.
 
 ### Changed
 - `optimize()` sends `quality` only when you set it. Before, it always sent `80`, so `mode: 'extreme'` produced lossy-Q80-sized files; now the server default per mode applies (lossy 80, extreme a per-codec default). Results for `lossy` are unchanged.

@@ -277,7 +277,7 @@ export class SmallPictClient {
       }
     }
 
-    const response = await this.http.request<PurgeResponse>({
+    const response = await this.http.request<{ message: string; delivery_modes?: Array<'managed' | 'byo'> }>({
       method: 'POST',
       path: '/v1/purge',
       body: {
@@ -287,7 +287,8 @@ export class SmallPictClient {
       },
     });
 
-    return response.data;
+    const d = response.data;
+    return { message: d.message, ...(d.delivery_modes !== undefined && { deliveryModes: d.delivery_modes }) };
   }
 
   /**

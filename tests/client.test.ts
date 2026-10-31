@@ -96,9 +96,23 @@ describe('SmallPictClient', () => {
 
     const res = await client.purgeCdn(['https://cdn.smallpict.app/opt/hero.avif']);
     expect(res.message).toBe('Purge job enqueued successfully');
+    expect('deliveryModes' in res).toBe(false);
 
     const callArgs = mockFetch.mock.calls[0]!;
     expect(callArgs[0]).toBe('https://api.smallpict.app/v1/purge');
+  });
+
+  it('maps delivery_modes of a purge to deliveryModes', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 202,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => ({ message: 'Purge job enqueued successfully', delivery_modes: ['byo'] }),
+    });
+    const client = new SmallPictClient({ apiKey: 'sp_sdk_testkey1234567890abcdef', fetch: mockFetch });
+
+    const res = await client.purgeCdn({ purgeType: 'all' });
+    expect(res).toEqual({ message: 'Purge job enqueued successfully', deliveryModes: ['byo'] });
   });
 
   it('validates key returning true on 200 and false on 401', async () => {

@@ -153,6 +153,8 @@ console.log('CDN cache purged successfully!');
 await client.purgeCdn({ purgeType: 'folder', folder: 'blog/2026' });
 ```
 
+The result's `deliveryModes` says where the purge ran: `['managed']` (smallPict's CDN) or `['byo']` (your own CDN while BYO delivery is active).
+
 `folder` and `all` purges are limited per hour (10 and 2). One more throws `RateLimitError`, which the SDK does not retry automatically: the limit resets within the hour, not in seconds.
 
 ### Capacity and upgrade links

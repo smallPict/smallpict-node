@@ -354,6 +354,11 @@ export interface PurgeOptions {
  */
 export interface PurgeResponse {
   message: string;
+  /**
+   * CDN the purge was sent to: `managed` (smallPict's) or `byo` (the customer's own CDN).
+   * Absent from older servers.
+   */
+  deliveryModes?: Array<'managed' | 'byo'>;
 }
 
 /**
