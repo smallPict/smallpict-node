@@ -259,6 +259,72 @@ export interface QuotaResponse {
   cdnEgressQuotaBytes?: number;
   activeKeysCount?: number;
   activeSitesCount?: number;
+  /**
+   * Read-only capacity of the key's product. `null` when the server could not read it;
+   * absent from older servers. Capacity is bought only in the dashboard (`manageUrl`).
+   */
+  capacity?: Capacity | null;
+}
+
+/**
+ * Capacity of the key's product from `GET /v1/quota`. A member that does not apply to the
+ * product or plan is `null`.
+ */
+export interface Capacity {
+  /** End of the product's current paid period (ISO 8601). */
+  periodEnd: string | null;
+  /** smallPict-managed storage; `null` on plans without it and for sandbox keys. */
+  storage: CapacityStorage | null;
+  /** Managed CDN usage of the current cycle; `null` where managed CDN is not reported. */
+  cdn: CapacityCDN | null;
+  booster: CapacityBooster;
+  /** Unpaid-account state of the product; `null` while it is paid up. */
+  lapse: CapacityLapse | null;
+  /** Dashboard billing page. Show it; the SDK never opens it. */
+  manageUrl: string;
+}
+
+export interface CapacityStorage {
+  /** Limit the account is held to: the largest plan base plus add-ons across its subscriptions. */
+  limitBytes: number;
+  /** Managed storage used by the whole account. */
+  usedBytes: number;
+  /** Storage included in the key's plan. */
+  baseBytes: number;
+  /** Storage add-on blocks (10 GiB each) of the key's product. */
+  addonBlocks: number;
+}
+
+export interface CapacityCDN {
+  limitBytes: number;
+  usedBytes: number;
+  status: 'ok' | 'warn_80' | 'exceeded_grace' | 'hard_block';
+}
+
+/**
+ * Booster balances left. A balance that does not apply to the product is `null`.
+ */
+export interface CapacityBooster {
+  /** False: frozen (no active paid subscription), not sold to the plan, or a sandbox key. */
+  active: boolean;
+  wpQuotaBytes: number | null;
+  apiTransforms: number | null;
+  cdnBytes: number | null;
+  /** The lot that expires first, or `null`. */
+  nextExpiry: CapacityExpiry | null;
+}
+
+export interface CapacityExpiry {
+  kind: 'wp_quota_bytes' | 'api_transforms' | 'cdn_bytes';
+  units: number;
+  /** ISO 8601. */
+  expiresAt: string;
+}
+
+export interface CapacityLapse {
+  stage: 'grace' | 'blocked' | 'deleting';
+  /** When the product's managed files are deleted (ISO 8601); `null` in `grace`. */
+  deleteAfter: string | null;
 }
 
 /**
@@ -305,6 +371,14 @@ export type ErrorCode =
   | 'mode_not_in_plan'
   | 'invalid_folder'
   | 'purge_rate_limited'
+  | 'storage_quota_exceeded'
+  | 'account_read_only'
+  | 'storage_addon_limit_exceeded'
+  | 'storage_addon_unavailable_in_byo_mode'
+  | 'storage_reduce_below_usage'
+  | 'subscription_not_active'
+  | 'booster_not_applicable_in_byo_mode'
+  | 'booster_period_limit_exceeded'
   | 'INTERNAL_ERROR'
   | 'NETWORK_ERROR'
   | 'TIMEOUT_ERROR';

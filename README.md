@@ -155,6 +155,26 @@ await client.purgeCdn({ purgeType: 'folder', folder: 'blog/2026' });
 
 `folder` and `all` purges are limited per hour (10 and 2). One more throws `RateLimitError`, which the SDK does not retry automatically: the limit resets within the hour, not in seconds.
 
+### Capacity and upgrade links
+
+`getQuota()` returns `capacity` for the product of your API key: storage (`limitBytes`, `usedBytes`, `baseBytes`, `addonBlocks`), CDN (`limitBytes`, `usedBytes`, `status`), booster balances (`active`, `wpQuotaBytes`, `apiTransforms`, `cdnBytes`, `nextExpiry`), the unpaid-account state (`lapse`), `periodEnd` and `manageUrl`. A member that does not apply to your plan is `null`; `capacity` is `null` when the server could not read it and absent on older servers. Capacity is read-only here: storage add-ons and boosters are bought in the dashboard.
+
+```ts
+const { capacity } = await client.getQuota();
+if (capacity?.storage) console.log(`Storage: ${capacity.storage.usedBytes} / ${capacity.storage.limitBytes} bytes`);
+if (capacity?.booster.nextExpiry) console.log(`Booster lot expires ${capacity.booster.nextExpiry.expiresAt}`);
+```
+
+Errors about capacity carry `upgradeUrl`, the dashboard page where you add it (`null` when the error has none). `storage_quota_exceeded` and `account_read_only` throw `QuotaExceededError`; `mode_not_in_plan` throws `PermissionDeniedError` with `allowedModes`. The SDK never opens these links; show them to your user.
+
+```ts
+try {
+  await client.optimize(imageBuffer);
+} catch (err) {
+  if (err instanceof QuotaExceededError) console.error(`${err.message} Add capacity: ${err.upgradeUrl ?? 'https://smallpict.app/dashboard/billing'}`);
+}
+```
+
 ---
 
 ## 🧪 Testing

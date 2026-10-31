@@ -11,6 +11,7 @@ import type {
   PurgeOptions,
   PurgeResponse,
   QuotaResponse,
+  Capacity,
 } from './types.js';
 
 /**
@@ -241,6 +242,7 @@ export class SmallPictClient {
       cdnEgressQuotaBytes: d.cdn_egress_quota_bytes,
       activeKeysCount: d.active_keys_count,
       activeSitesCount: d.active_sites_count,
+      ...(d.capacity !== undefined && { capacity: toCapacity(d.capacity) }),
     };
   }
 
@@ -340,4 +342,33 @@ export class SmallPictClient {
       updatedAt: d.updated_at,
     };
   }
+}
+
+/** Maps the wire `capacity` of `GET /v1/quota` to `Capacity`; `null` stays `null`. */
+function toCapacity(c: Record<string, any> | null): Capacity | null {
+  if (!c) return null;
+  const b = c.booster ?? {};
+  return {
+    periodEnd: c.period_end ?? null,
+    storage: c.storage
+      ? {
+          limitBytes: c.storage.limit_bytes,
+          usedBytes: c.storage.used_bytes,
+          baseBytes: c.storage.base_bytes,
+          addonBlocks: c.storage.addon_blocks,
+        }
+      : null,
+    cdn: c.cdn ? { limitBytes: c.cdn.limit_bytes, usedBytes: c.cdn.used_bytes, status: c.cdn.status } : null,
+    booster: {
+      active: b.active === true,
+      wpQuotaBytes: b.wp_quota_bytes ?? null,
+      apiTransforms: b.api_transforms ?? null,
+      cdnBytes: b.cdn_bytes ?? null,
+      nextExpiry: b.next_expiry
+        ? { kind: b.next_expiry.kind, units: b.next_expiry.units, expiresAt: b.next_expiry.expires_at }
+        : null,
+    },
+    lapse: c.lapse ? { stage: c.lapse.stage, deleteAfter: c.lapse.delete_after ?? null } : null,
+    manageUrl: c.manage_url,
+  };
 }

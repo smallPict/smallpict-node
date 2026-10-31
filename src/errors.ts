@@ -21,6 +21,11 @@ export class SmallPictError extends Error {
   public readonly status?: number;
   public readonly requestId?: string;
   public readonly details?: Record<string, unknown>;
+  /**
+   * Dashboard page where the missing capacity is added (`details.upgrade_url`), or `null`.
+   * Shown to the user; the SDK never opens or fetches it.
+   */
+  public readonly upgradeUrl: string | null;
 
   constructor(
     message: string,
@@ -36,6 +41,7 @@ export class SmallPictError extends Error {
     this.status = status;
     this.requestId = requestId;
     this.details = details;
+    this.upgradeUrl = typeof details?.upgrade_url === 'string' ? details.upgrade_url : null;
 
     Object.setPrototypeOf(this, new.target.prototype);
   }
@@ -62,9 +68,14 @@ export class AuthenticationError extends SmallPictError {
 }
 
 export class PermissionDeniedError extends SmallPictError {
+  /** Modes the plan allows, from `details.allowed_modes` of `mode_not_in_plan`; otherwise `null`. */
+  public readonly allowedModes: string[] | null;
+
   constructor(message: string, requestId?: string, details?: Record<string, unknown>) {
     super(message, 'FORBIDDEN', 403, requestId, details);
     this.name = 'PermissionDeniedError';
+    const modes = details?.allowed_modes;
+    this.allowedModes = Array.isArray(modes) ? modes.filter((m): m is string => typeof m === 'string') : null;
   }
 }
 
