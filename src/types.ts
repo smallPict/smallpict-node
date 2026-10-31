@@ -12,12 +12,12 @@ export type FitMode = 'cover' | 'contain' | 'inside' | 'outside';
  * Compression mode. The server checks it against the plan: a mode outside the plan is
  * `403 mode_not_in_plan` (`PermissionDeniedError`, `details.allowed_modes`).
  */
-export type CompressionMode = 'lossy' | 'extreme' | 'lossless';
+export type CompressionMode = 'lossy' | 'extreme' | 'lossless' | 'auto';
 
 /**
  * Every compression mode the API accepts.
  */
-export const COMPRESSION_MODES: readonly CompressionMode[] = ['lossy', 'extreme', 'lossless'];
+export const COMPRESSION_MODES: readonly CompressionMode[] = ['lossy', 'extreme', 'lossless', 'auto'];
 
 /**
  * Fallback behavior when monthly quota limit is reached.

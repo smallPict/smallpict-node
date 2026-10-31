@@ -8,6 +8,7 @@ import type { OptimizeOptions } from '../src/types.js';
 const cases: { name: string; input: OptimizeOptions; wire_mode?: string; error?: boolean }[] = [
   { name: 'no mode, no flag', input: {} },
   { name: 'mode only', input: { mode: 'extreme' }, wire_mode: 'extreme' },
+  { name: 'mode auto', input: { mode: 'auto' }, wire_mode: 'auto' },
   { name: 'deprecated flag only', input: { lossless: true }, wire_mode: 'lossless' },
   { name: 'flag false is ignored', input: { lossless: false } },
   { name: 'flag agrees with mode', input: { mode: 'lossless', lossless: true }, wire_mode: 'lossless' },

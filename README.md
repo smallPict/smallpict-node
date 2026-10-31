@@ -53,7 +53,7 @@ const imageBuffer = readFileSync('./hero-banner.png');
 
 const result = await client.optimize(imageBuffer, {
   format: 'avif',
-  mode: 'lossy', // 'lossy' (default) | 'extreme' | 'lossless'; checked against your plan
+  mode: 'lossy', // 'lossy' (default) | 'extreme' | 'lossless' | 'auto'; checked against your plan
   quality: 80,
   maxWidth: 1920,
 });
@@ -65,7 +65,9 @@ console.log(`Saved: ${result.savingsPercentage}% (${result.bytesSaved} bytes)`);
 
 ### Compression mode
 
-`mode` is `lossy` (default), `extreme` or `lossless`. The server checks it against your plan: a mode the plan does not include throws `PermissionDeniedError` whose `details.allowed_modes` lists the modes you can use. The job status reports what the encoder really used as `modeApplied` and `qualityApplied`. The old `lossless: true` option still works but is deprecated; use `mode: 'lossless'`.
+`mode` is `lossy` (default), `extreme`, `lossless` or `auto`. The server checks it against your plan: a mode the plan does not include throws `PermissionDeniedError` whose `details.allowed_modes` lists the modes you can use. The job status reports what the encoder really used as `modeApplied` and `qualityApplied`. The old `lossless: true` option still works but is deprecated; use `mode: 'lossless'`.
+
+`auto` picks, per image, the lowest quality that keeps the visual score (SSIMULACRA 2) at or above 70, and ignores `quality`. It is on WP Pro and Business, Velocity, Momentum and sandbox keys (5 auto jobs per minute per sandbox key). When it cannot search (PNG or GIF output, animation, time limit), the image is encoded `lossy` and `modeApplied` says so.
 
 `extreme` gives the smallest files on every plan. Leave `quality` out so the server uses its default for the output format; a `quality` you set is kept or raised to the format floor. Mode comparison: https://smallpict.app/en/docs/image-settings
 
