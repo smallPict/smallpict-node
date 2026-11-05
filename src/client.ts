@@ -1,5 +1,6 @@
 import { HttpClient } from './http.js';
-import { QuotaExceededError, ValidationError } from './errors.js';
+import { QuotaExceededError, SmallPictError, TimeoutError, ValidationError } from './errors.js';
+import { sleep } from './http.js';
 import type {
   ClientOptions,
   CompressionMode,
@@ -46,17 +47,15 @@ export function validateFolder(folder: string): void {
 async function resolveImageSource(
   source: ImageSource,
   options?: OptimizeOptions
-): Promise<{ filename: string; mimeType: string; filesize: number; buffer?: Uint8Array }> {
+): Promise<{ filename: string; mimeType: string; filesize: number; buffer: Uint8Array }> {
   let filename = options?.filename || 'image.jpg';
   let mimeType = options?.mimeType || options?.contentType || 'image/jpeg';
   let filesize = 0;
   let buffer: Uint8Array | undefined;
 
   if (typeof source === 'string') {
-    // If it's a URL or path
     if (source.startsWith('http://') || source.startsWith('https://')) {
-      filename = source.split('/').pop()?.split('?')[0] || filename;
-      return { filename, mimeType, filesize: 0 };
+      throw new ValidationError('The API does not fetch URLs: download the image and pass its bytes to optimize().');
     }
     // Base64 Data URI
     if (source.startsWith('data:')) {
@@ -92,6 +91,9 @@ async function resolveImageSource(
     return { filename, mimeType, filesize, buffer };
   }
 
+  if (!buffer) {
+    throw new ValidationError('Unsupported image source: pass a Buffer, Uint8Array, ArrayBuffer, Blob, File or data: URI.');
+  }
   return { filename, mimeType, filesize, buffer };
 }
 
@@ -101,6 +103,8 @@ async function resolveImageSource(
 export class SmallPictClient {
   private readonly http: HttpClient;
   private readonly fallbackMode: FallbackMode;
+  private readonly pollIntervalMs: number;
+  private readonly waitTimeoutMs: number;
 
   constructor(options?: Partial<ClientOptions>) {
     const apiKey = options?.apiKey || (typeof process !== 'undefined' ? process.env?.['SMALLPICT_API_KEY'] : undefined);
@@ -113,6 +117,8 @@ export class SmallPictClient {
     }
 
     this.fallbackMode = options?.fallbackMode || 'throw';
+    this.pollIntervalMs = options?.pollIntervalMs ?? 1000;
+    this.waitTimeoutMs = options?.waitTimeoutMs ?? 120000;
 
     this.http = new HttpClient({
       apiKey,
@@ -127,9 +133,14 @@ export class SmallPictClient {
   /**
    * Optimize, compress, and transcode an image asset.
    *
-   * @param source Binary buffer, Blob, File, Stream, or URL
+   * Queues the job, uploads the bytes to the pre-signed URL the API returns, and polls the job
+   * status every `pollIntervalMs` until it is completed (or `waitTimeoutMs` passes).
+   *
+   * @param source Buffer, Uint8Array, ArrayBuffer, Blob, File or data: URI (not an http URL)
    * @param options Compression and resizing parameters
-   * @returns Optimized result with permanent CDN delivery URL
+   * @returns The finished job: delivery URL, format, bytes saved, mode and quality applied
+   * @throws SmallPictError `job_failed` with the server's message when the job fails
+   * @throws TimeoutError when the job is still running after `waitTimeoutMs`
    *
    * @example
    * ```ts
@@ -164,40 +175,23 @@ export class SmallPictClient {
       },
     };
 
+    let queued: { job_id: string; upload_url: string };
     try {
-      const response = await this.http.request<Record<string, any>>({
-        method: 'POST',
-        path: '/v1/optimize',
-        body: payload,
-        idempotencyKey: options?.idempotencyKey,
-      });
-
-      const res = response.data;
-      const originalSize = res.original_size || resolved.filesize;
-      const compressedSize = res.compressed_size || originalSize;
-      const bytesSaved = res.bytes_saved ?? Math.max(0, originalSize - compressedSize);
-      const savingsPercentage =
-        res.savings_percentage ?? (originalSize > 0 ? ((bytesSaved / originalSize) * 100) : 0);
-
-      return {
-        jobId: res.job_id || 'sync',
-        status: res.status || 'completed',
-        url: res.url || '',
-        format: res.format || options?.format || 'auto',
-        originalSize,
-        compressedSize,
-        bytesSaved,
-        savingsPercentage: Number(savingsPercentage.toFixed(2)),
-        uploadUrl: res.upload_url,
-        folder: res.folder,
-      };
+      queued = (
+        await this.http.request<{ job_id: string; upload_url: string }>({
+          method: 'POST',
+          path: '/v1/optimize',
+          body: payload,
+          idempotencyKey: options?.idempotencyKey,
+        })
+      ).data;
     } catch (err: unknown) {
       if (err instanceof QuotaExceededError && this.fallbackMode === 'passthrough') {
         // Fallback gracefully without crashing caller
         return {
           jobId: 'fallback-passthrough',
           status: 'completed',
-          url: typeof source === 'string' ? source : '',
+          url: '',
           format: resolved.mimeType.replace('image/', ''),
           originalSize: resolved.filesize,
           compressedSize: resolved.filesize,
@@ -207,6 +201,42 @@ export class SmallPictClient {
         };
       }
       throw err;
+    }
+
+    // The worker waits 30 s from the request for the object: upload now, poll after.
+    await this.http.upload(queued.upload_url, resolved.buffer, resolved.mimeType);
+
+    const deadline = Date.now() + this.waitTimeoutMs;
+    for (;;) {
+      await sleep(Math.min(this.pollIntervalMs, Math.max(0, deadline - Date.now())));
+      const status = await this.getJobStatus(queued.job_id);
+      if (status.status === 'completed') {
+        const bytesSaved = status.bytesSaved ?? 0;
+        const originalSize = resolved.filesize;
+        return {
+          jobId: status.jobId,
+          status: 'completed',
+          url: status.url ?? '',
+          format: status.format ?? '',
+          originalSize,
+          compressedSize: originalSize - bytesSaved,
+          bytesSaved,
+          savingsPercentage: originalSize > 0 ? Number(((bytesSaved / originalSize) * 100).toFixed(2)) : 0,
+          modeApplied: status.modeApplied,
+          qualityApplied: status.qualityApplied,
+          folder: status.folder,
+        };
+      }
+      if (status.status === 'failed') {
+        throw new SmallPictError(status.error?.message || 'The optimization job failed.', 'job_failed', undefined, undefined, {
+          job_id: status.jobId,
+        });
+      }
+      if (Date.now() >= deadline) {
+        throw new TimeoutError(
+          `Job ${queued.job_id} did not finish within ${this.waitTimeoutMs}ms; poll getJobStatus('${queued.job_id}') later.`
+        );
+      }
     }
   }
 

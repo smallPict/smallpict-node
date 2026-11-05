@@ -1,6 +1,6 @@
 {
   "name": "@smallpict/sdk",
-  "version": "0.0.7",
+  "version": "0.1.0",
   "description": "Official TypeScript & Node.js SDK for SmallPict Image Optimization API",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

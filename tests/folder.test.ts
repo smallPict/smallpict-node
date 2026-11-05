@@ -13,7 +13,7 @@ function jsonFetch(status: number, body: unknown) {
 }
 
 function client(fetch: ReturnType<typeof vi.fn>, maxRetries = 0) {
-  return new SmallPictClient({ apiKey: 'sp_sdk_testkey1234567890abcdef', secretKey: 'sec_testsecret12345678', fetch, maxRetries });
+  return new SmallPictClient({ apiKey: 'sp_sdk_testkey1234567890abcdef', secretKey: 'sec_testsecret12345678', fetch, maxRetries, pollIntervalMs: 1 });
 }
 
 function sentBody(fetch: ReturnType<typeof vi.fn>) {
@@ -22,19 +22,19 @@ function sentBody(fetch: ReturnType<typeof vi.fn>) {
 
 describe('upload folder', () => {
   it('sends folder as options.folder', async () => {
-    const fetch = jsonFetch(200, { job_id: 'j', status: 'queued' });
+    const fetch = jsonFetch(200, { job_id: 'j', status: 'completed', upload_url: 'https://s3.test/up' });
     await client(fetch).optimize(Buffer.from('img'), { folder: 'Blog/2026' });
     expect(sentBody(fetch).options.folder).toBe('Blog/2026');
   });
 
   it('omits folder when unset', async () => {
-    const fetch = jsonFetch(200, { job_id: 'j', status: 'queued' });
+    const fetch = jsonFetch(200, { job_id: 'j', status: 'completed', upload_url: 'https://s3.test/up' });
     await client(fetch).optimize(Buffer.from('img'));
     expect('folder' in sentBody(fetch).options).toBe(false);
   });
 
   it('surfaces folder from the optimize response and the job status', async () => {
-    const fetch = jsonFetch(200, { job_id: 'j', status: 'completed', folder: 'blog/2026' });
+    const fetch = jsonFetch(200, { job_id: 'j', status: 'completed', upload_url: 'https://s3.test/up', folder: 'blog/2026' });
     const c = client(fetch);
     expect((await c.optimize(Buffer.from('img'), { folder: 'Blog/2026' })).folder).toBe('blog/2026');
     expect((await c.getJobStatus('j')).folder).toBe('blog/2026');
@@ -42,7 +42,7 @@ describe('upload folder', () => {
 
   for (const bad of ['', 'a//b', '/a', 'a/', '../x', 'a/../b', 'a/b/c/d']) {
     it(`rejects folder '${bad}' before any request`, async () => {
-      const fetch = jsonFetch(200, { job_id: 'j', status: 'queued' });
+      const fetch = jsonFetch(200, { job_id: 'j', status: 'completed', upload_url: 'https://s3.test/up' });
       await expect(client(fetch).optimize(Buffer.from('img'), { folder: bad })).rejects.toBeInstanceOf(ValidationError);
       await expect(client(fetch).purgeCdn({ purgeType: 'folder', folder: bad })).rejects.toBeInstanceOf(ValidationError);
       expect(fetch).not.toHaveBeenCalled();

@@ -58,10 +58,18 @@ const result = await client.optimize(imageBuffer, {
   maxWidth: 1920,
 });
 
-console.log(`Optimized CDN URL: ${result.url}`);
+console.log(`Optimized URL: ${result.url}`);
 console.log(`Original: ${result.originalSize} bytes ➔ Compressed: ${result.compressedSize} bytes`);
 console.log(`Saved: ${result.savingsPercentage}% (${result.bytesSaved} bytes)`);
 ```
+
+### What `optimize()` does
+
+The API is asynchronous: `POST /v1/optimize` queues a job and returns a pre-signed upload URL. `optimize()` runs the whole flow for you: it uploads the bytes to that URL (within the 30 seconds the worker waits for them), polls `GET /v1/optimize/status` every second, and resolves once the job is `completed` with `url`, `format`, `bytesSaved`, `modeApplied`, `qualityApplied` and `folder` from the job status. `url` for managed storage is a pre-signed link valid 10 minutes; `getJobStatus(result.jobId)` returns a fresh one.
+
+- A failed job rejects with `SmallPictError` whose `code` is `job_failed` and whose message is the server's (for example `client upload never arrived`).
+- A job still running after `waitTimeoutMs` (default 120 s) rejects with `TimeoutError` naming the job id; the job keeps running, so you can call `getJobStatus()` later. `pollIntervalMs` (default 1 s) sets the polling interval. Both are `SmallPictClient` options.
+- Pass bytes (`Buffer`, `Uint8Array`, `ArrayBuffer`, `Blob`, `File` or a `data:` URI). An `http(s)` URL throws `ValidationError`: the API does not fetch URLs, so download the image yourself first.
 
 ### Compression mode
 

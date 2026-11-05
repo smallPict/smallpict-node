@@ -18,12 +18,10 @@ describe('SmallPictClient', () => {
       json: async () => ({
         job_id: 'job-123-abc',
         status: 'completed',
+        upload_url: 'https://s3.test/up',
         url: 'https://cdn.smallpict.app/opt/test.avif',
         format: 'avif',
-        original_size: 100000,
-        compressed_size: 15000,
         bytes_saved: 85000,
-        savings_percentage: 85.0,
       }),
     });
 
@@ -31,9 +29,10 @@ describe('SmallPictClient', () => {
       apiKey: 'sp_sdk_testkey1234567890abcdef',
       secretKey: 'sec_testsecret12345678',
       fetch: mockFetch,
+      pollIntervalMs: 1,
     });
 
-    const buffer = Buffer.from('fake image binary content');
+    const buffer = Buffer.alloc(100000, 1);
     const result = await client.optimize(buffer, {
       format: 'avif',
       quality: 85,
@@ -42,7 +41,8 @@ describe('SmallPictClient', () => {
     expect(result.status).toBe('completed');
     expect(result.url).toBe('https://cdn.smallpict.app/opt/test.avif');
     expect(result.savingsPercentage).toBe(85);
-    expect(mockFetch).toHaveBeenCalledTimes(1);
+    // POST /v1/optimize, PUT upload_url, GET /v1/optimize/status
+    expect(mockFetch).toHaveBeenCalledTimes(3);
 
     const callArgs = mockFetch.mock.calls[0]!;
     expect(callArgs[0]).toBe('https://api.smallpict.app/v1/optimize');

@@ -1,5 +1,5 @@
 import { buildStringToSign, EMPTY_SHA256, hmacSha256Hex, sha256Hex } from './crypto.js';
-import { createErrorFromResponse, NetworkError, TimeoutError } from './errors.js';
+import { createErrorFromResponse, NetworkError, SmallPictError, TimeoutError } from './errors.js';
 import type { ClientOptions } from './types.js';
 
 export interface RequestOptions {
@@ -60,6 +60,36 @@ export class HttpClient {
 
     if (!this.fetchImpl) {
       throw new Error('No global fetch implementation found. Pass a custom fetch in ClientOptions.');
+    }
+  }
+
+  /**
+   * PUT raw bytes to a pre-signed storage URL. No API headers: the URL is signed for exactly
+   * this Content-Type and Content-Length, and S3 refuses anything else. No retry: the worker
+   * stops waiting for the object 30 s after the job was queued.
+   */
+  public async upload(url: string, body: Uint8Array, contentType: string): Promise<void> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
+    try {
+      const response = await this.fetchImpl(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': contentType, 'Content-Length': String(body.byteLength) },
+        body: body as unknown as BodyInit, // TS 5.7+ types Uint8Array<ArrayBufferLike> outside BodyInit
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new SmallPictError(`Upload to staging failed with HTTP ${response.status}${text ? `: ${text}` : ''}`, 'upload_failed', response.status);
+      }
+    } catch (err: unknown) {
+      if (err instanceof SmallPictError) throw err;
+      if (err instanceof Error && err.name === 'AbortError') {
+        throw new TimeoutError(`Upload to staging exceeded timeout of ${this.timeoutMs}ms`);
+      }
+      throw new NetworkError(err instanceof Error ? err.message : String(err), err);
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 

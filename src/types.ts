@@ -35,8 +35,7 @@ export type ImageSource =
   | ArrayBuffer
   | Blob
   | File
-  | ReadableStream
-  | string; // URL or File path string
+  | string; // data: URI. An http(s) URL throws ValidationError: the API does not fetch URLs.
 
 /**
  * Configuration options for initializing the SmallPict SDK client.
@@ -73,6 +72,17 @@ export interface ClientOptions {
    * Fallback mode when account quota is exhausted (default: 'throw').
    */
   fallbackMode?: FallbackMode;
+
+  /**
+   * How often `optimize()` polls the job status while waiting (default: 1,000ms).
+   */
+  pollIntervalMs?: number;
+
+  /**
+   * How long `optimize()` waits for the job to finish before throwing `TimeoutError`
+   * (default: 120,000ms). The job keeps running; poll `getJobStatus()` later.
+   */
+  waitTimeoutMs?: number;
 
   /**
    * Custom `fetch` function implementation (optional, defaults to global `fetch`).
@@ -169,12 +179,15 @@ export interface OptimizeResult {
   jobId: string;
 
   /**
-   * Processing status.
+   * Always 'completed': `optimize()` uploads the bytes and waits for the job. A failed job
+   * throws `SmallPictError` (`job_failed`); a job still running after `waitTimeoutMs` throws
+   * `TimeoutError`.
    */
-  status: 'completed' | 'queued' | 'processing' | 'failed';
+  status: 'completed';
 
   /**
-   * Permanent Edge CDN delivery URL for the optimized asset.
+   * Delivery URL of the optimized asset from the job status. For managed storage this is a
+   * pre-signed URL valid 10 minutes; `getJobStatus()` returns a fresh one.
    */
   url: string;
 
@@ -204,12 +217,17 @@ export interface OptimizeResult {
   savingsPercentage: number;
 
   /**
-   * Pre-signed upload URL if large binary stream upload is required.
+   * Mode the server's encoder used; absent when no encoder ran.
    */
-  uploadUrl?: string;
+  modeApplied?: string;
 
   /**
-   * Binary data if requested in buffer mode.
+   * Quality the server's encoder used, on the codec's own scale.
+   */
+  qualityApplied?: number;
+
+  /**
+   * The original bytes, only with `fallbackMode: 'passthrough'` after a quota error.
    */
   data?: Uint8Array;
 
@@ -384,6 +402,8 @@ export type ErrorCode =
   | 'subscription_not_active'
   | 'booster_not_applicable_in_byo_mode'
   | 'booster_period_limit_exceeded'
+  | 'upload_failed'
+  | 'job_failed'
   | 'INTERNAL_ERROR'
   | 'NETWORK_ERROR'
   | 'TIMEOUT_ERROR';

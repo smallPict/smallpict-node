@@ -26,13 +26,13 @@ function jsonFetch(status: number, body: unknown) {
 }
 
 function client(fetch: ReturnType<typeof vi.fn>) {
-  return new SmallPictClient({ apiKey: 'sp_sdk_testkey1234567890abcdef', secretKey: 'sec_testsecret12345678', fetch, maxRetries: 0 });
+  return new SmallPictClient({ apiKey: 'sp_sdk_testkey1234567890abcdef', secretKey: 'sec_testsecret12345678', fetch, maxRetries: 0, pollIntervalMs: 1 });
 }
 
 describe('compression mode', () => {
   for (const tc of cases) {
     it(tc.name, async () => {
-      const fetch = jsonFetch(200, { job_id: 'j', status: 'queued' });
+      const fetch = jsonFetch(200, { job_id: 'j', status: 'completed', upload_url: 'https://s3.test/up' });
       const run = client(fetch).optimize(Buffer.from('img'), tc.input);
       if (tc.error) {
         await expect(run).rejects.toBeInstanceOf(ValidationError);
@@ -47,21 +47,21 @@ describe('compression mode', () => {
   }
 
   it('omits quality when unset so the server picks the default per mode', async () => {
-    const fetch = jsonFetch(200, { job_id: 'j', status: 'queued' });
+    const fetch = jsonFetch(200, { job_id: 'j', status: 'completed', upload_url: 'https://s3.test/up' });
     await client(fetch).optimize(Buffer.from('img'), { mode: 'extreme' });
     const sent = JSON.parse((fetch.mock.calls[0]![1] as RequestInit).body as string);
     expect('quality' in sent.options).toBe(false);
   });
 
   it('sends quality when set', async () => {
-    const fetch = jsonFetch(200, { job_id: 'j', status: 'queued' });
+    const fetch = jsonFetch(200, { job_id: 'j', status: 'completed', upload_url: 'https://s3.test/up' });
     await client(fetch).optimize(Buffer.from('img'), { mode: 'extreme', quality: 70 });
     const sent = JSON.parse((fetch.mock.calls[0]![1] as RequestInit).body as string);
     expect(sent.options.quality).toBe(70);
   });
 
   it('reads mode_applied and quality_applied from the job status', async () => {
-    const fetch = jsonFetch(200, { job_id: 'j', status: 'completed', mode_applied: 'lossy', quality_applied: 65 });
+    const fetch = jsonFetch(200, { job_id: 'j', status: 'completed', upload_url: 'https://s3.test/up', mode_applied: 'lossy', quality_applied: 65 });
     const status = await client(fetch).getJobStatus('j');
     expect(status.modeApplied).toBe('lossy');
     expect(status.qualityApplied).toBe(65);
