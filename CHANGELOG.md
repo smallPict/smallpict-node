@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ErrorCode` `job_failed` (a failed job: `SmallPictError` with the server's `error.message` and `details.job_id`) and `upload_failed` (the storage refused the PUT: `SmallPictError` with the HTTP status). A job still running after `waitTimeoutMs` throws `TimeoutError` with the job id; it keeps running on the server.
 
 ### Changed
+- **`secretKey` is required.** Without it the SDK sent `Authorization: Bearer <apiKey>`, which the API refuses with 403 "Legacy Bearer token format is no longer supported", so every call failed. The constructor now throws `ValidationError` naming `SMALLPICT_SECRET_KEY`, and every request is signed. The README quota example and feature list no longer describe a Bearer mode.
 - **`OptimizeResult.status` is always `'completed'`** and `uploadUrl` is gone: there is no result to return before the job finished. Code that checked `status === 'queued'` or used `uploadUrl` to upload by itself can drop that.
 - **An `http(s)` URL source throws `ValidationError`** before any request. The API never fetched URLs, so such calls failed on the server; the SDK does not download on your behalf. `ReadableStream` is removed from `ImageSource` (it was never read either).
 - `compressedSize` and `savingsPercentage` are derived from the bytes sent and `bytes_saved` of the job status.

@@ -7,6 +7,20 @@ describe('SmallPictClient', () => {
     expect(() => new SmallPictClient({ apiKey: '' })).toThrow(ValidationError);
   });
 
+  it('throws ValidationError before any request if no secret key is provided', () => {
+    // The API refuses unsigned requests with 403, so a client without a secret could never work.
+    vi.stubEnv('SMALLPICT_SECRET_KEY', '');
+    const mockFetch = vi.fn();
+    try {
+      expect(() => new SmallPictClient({ apiKey: 'sp_sdk_testkey1234567890abcdef', fetch: mockFetch })).toThrow(
+        /SMALLPICT_SECRET_KEY/
+      );
+      expect(mockFetch).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('successfully optimizes an image buffer using mock fetch', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -69,7 +83,7 @@ describe('SmallPictClient', () => {
     });
 
     const client = new SmallPictClient({
-      apiKey: 'sp_sdk_testkey1234567890abcdef',
+      apiKey: 'sp_sdk_testkey1234567890abcdef', secretKey: 'sec_testsecret12345678',
       fetch: mockFetch,
     });
 
@@ -90,7 +104,7 @@ describe('SmallPictClient', () => {
     });
 
     const client = new SmallPictClient({
-      apiKey: 'sp_sdk_testkey1234567890abcdef',
+      apiKey: 'sp_sdk_testkey1234567890abcdef', secretKey: 'sec_testsecret12345678',
       fetch: mockFetch,
     });
 
@@ -109,7 +123,7 @@ describe('SmallPictClient', () => {
       headers: new Headers({ 'content-type': 'application/json' }),
       json: async () => ({ message: 'Purge job enqueued successfully', delivery_modes: ['byo'] }),
     });
-    const client = new SmallPictClient({ apiKey: 'sp_sdk_testkey1234567890abcdef', fetch: mockFetch });
+    const client = new SmallPictClient({ apiKey: 'sp_sdk_testkey1234567890abcdef', secretKey: 'sec_testsecret12345678', fetch: mockFetch });
 
     const res = await client.purgeCdn({ purgeType: 'all' });
     expect(res).toEqual({ message: 'Purge job enqueued successfully', deliveryModes: ['byo'] });
@@ -124,7 +138,7 @@ describe('SmallPictClient', () => {
     });
 
     const clientValid = new SmallPictClient({
-      apiKey: 'sp_sdk_valid',
+      apiKey: 'sp_sdk_valid', secretKey: 'sec_testsecret12345678',
       fetch: successFetch,
     });
     expect(await clientValid.validateKey()).toBe(true);
@@ -137,7 +151,7 @@ describe('SmallPictClient', () => {
     });
 
     const clientInvalid = new SmallPictClient({
-      apiKey: 'sp_sdk_invalid',
+      apiKey: 'sp_sdk_invalid', secretKey: 'sec_testsecret12345678',
       fetch: failFetch,
     });
     expect(await clientInvalid.validateKey()).toBe(false);
@@ -164,7 +178,7 @@ describe('SmallPictClient', () => {
     });
 
     const client = new SmallPictClient({
-      apiKey: 'sp_sdk_test',
+      apiKey: 'sp_sdk_test', secretKey: 'sec_testsecret12345678',
       fetch: mockFetch,
     });
 
@@ -182,7 +196,7 @@ describe('SmallPictClient', () => {
     });
 
     const client = new SmallPictClient({
-      apiKey: 'sp_sdk_test',
+      apiKey: 'sp_sdk_test', secretKey: 'sec_testsecret12345678',
       fallbackMode: 'passthrough',
       fetch: mockFetch,
     });

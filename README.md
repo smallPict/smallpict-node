@@ -10,7 +10,7 @@ Official TypeScript and Node.js SDK for the [SmallPict Image Optimization API](h
 ## ⚡ Features
 
 - **🚀 Universal Runtime Support:** Compatible with **Node.js 18+**, **Bun**, **Next.js (App & Pages Router)**, and **Cloudflare Workers** with **zero external HTTP dependencies** (native Web Fetch & Web Crypto).
-- **🛡️ HMAC-SHA256 & Bearer Auth:** Secure request signing and tamper protection.
+- **🛡️ HMAC-SHA256 signing:** Every request is signed with your secret key; the API refuses unsigned requests.
 - **✨ 4 Core Unified Methods:** `optimize()`, `getQuota()`, `purgeCdn()`, and `validateKey()`.
 - **🔄 Resilience & Fault Tolerance:** Automatic `Idempotency-Key` injection, 30s request timeouts, and exponential backoff with jitter on HTTP 429/5xx.
 - **🔒 Zero-Leak Privacy:** API keys and credentials are automatically redacted from error traces and logs.
@@ -46,7 +46,7 @@ import { readFileSync } from 'node:fs';
 
 const client = new SmallPictClient({
   apiKey: process.env.SMALLPICT_API_KEY!, // or 'sp_sdk_...' / 'sp_test_...'
-  secretKey: process.env.SMALLPICT_SECRET_KEY, // Optional HMAC secret key
+  secretKey: process.env.SMALLPICT_SECRET_KEY, // Required: signs every request
 });
 
 const imageBuffer = readFileSync('./hero-banner.png');
@@ -145,6 +145,7 @@ import { SmallPictClient } from '@smallpict/sdk';
 
 const client = new SmallPictClient({
   apiKey: process.env.SMALLPICT_API_KEY!,
+  secretKey: process.env.SMALLPICT_SECRET_KEY!,
 });
 
 // 1. Check real-time quota usage

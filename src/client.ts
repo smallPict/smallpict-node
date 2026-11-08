@@ -115,6 +115,11 @@ export class SmallPictClient {
         'Missing required SmallPict API key. Provide `apiKey` in ClientOptions or set SMALLPICT_API_KEY environment variable.'
       );
     }
+    if (!secretKey) {
+      throw new ValidationError(
+        'Missing required SmallPict secret key. Provide `secretKey` in ClientOptions or set SMALLPICT_SECRET_KEY environment variable.'
+      );
+    }
 
     this.fallbackMode = options?.fallbackMode || 'throw';
     this.pollIntervalMs = options?.pollIntervalMs ?? 1000;

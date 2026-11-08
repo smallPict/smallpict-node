@@ -49,9 +49,10 @@ export interface ClientOptions {
 
   /**
    * Secret Key used to generate HMAC-SHA256 request signatures.
+   * Required: the API refuses unsigned requests.
    * Can also be sourced from `process.env.SMALLPICT_SECRET_KEY`.
    */
-  secretKey?: string;
+  secretKey: string;
 
   /**
    * API Base URL (defaults to `https://api.smallpict.app/v1`).

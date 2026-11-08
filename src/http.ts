@@ -44,7 +44,7 @@ export function sleep(ms: number): Promise<void> {
  */
 export class HttpClient {
   private readonly apiKey: string;
-  private readonly secretKey?: string;
+  private readonly secretKey: string;
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
   private readonly maxRetries: number;
@@ -132,17 +132,10 @@ export class HttpClient {
         headers['Content-Type'] = 'application/json';
       }
 
-      // Generate HMAC signature if secretKey is provided
-      if (this.secretKey) {
-        // Path passed to string-to-sign must match OpenAPI path
-        const stringToSign = buildStringToSign(method, cleanPath, timestamp, bodyHash);
-        const signature = await hmacSha256Hex(this.secretKey, stringToSign);
-        headers['X-Timestamp'] = timestamp;
-        headers['X-Signature'] = signature;
-      } else {
-        // Fallback to Bearer token format
-        headers['Authorization'] = `Bearer ${this.apiKey}`;
-      }
+      // Path passed to string-to-sign must match OpenAPI path
+      const stringToSign = buildStringToSign(method, cleanPath, timestamp, bodyHash);
+      headers['X-Timestamp'] = timestamp;
+      headers['X-Signature'] = await hmacSha256Hex(this.secretKey, stringToSign);
 
       // Add idempotency key for mutating methods
       if (method === 'POST' || method === 'PATCH' || method === 'DELETE') {
