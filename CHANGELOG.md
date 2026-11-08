@@ -51,7 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **`lossless: true` is honoured.** The SDK sent a `lossless` field the API never read, so every image was compressed lossy. It now sends `mode`.
 
-## [1.0.0] - 2026-08-21
+## [0.0.1] - 2026-09-02
 
 ### Added
 - Official TypeScript & Node.js SDK implementation for SmallPict OpenAPI 3.1.0 API.
