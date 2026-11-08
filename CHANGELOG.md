@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.0] - 2026-11-05
+## [0.0.8] - Unreleased
 
 ### Fixed
 - **`optimize()` now returns an optimized image.** `POST /v1/optimize` only queues the job and returns a pre-signed `upload_url`; the SDK stopped there, so the worker failed every job with "client upload never arrived" and callers got an empty `url` with 0 % saved. `optimize()` now PUTs the bytes to `upload_url` (plain PUT with `Content-Type` and `Content-Length` as sent, no API headers), polls `GET /v1/optimize/status` every `pollIntervalMs` (default 1 s) and resolves once the job is `completed`, with `url`, `format`, `bytesSaved`, `modeApplied`, `qualityApplied` and `folder` from the job status (`SDK_SPEC.md` section 3d).
